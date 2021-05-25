@@ -14,3 +14,5 @@ test3
 1mil_weak_bias
 
 and an example input would be: rle test1 test1out 1 0.
+
+You may also use our code to compress images, although ours did not work perfectly for this scenario. However, the images "slu_logo.bmp" and "uncompressed.bmp" have been included for this use case. 
