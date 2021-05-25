@@ -9,6 +9,7 @@ These test files are:
 test1
 test2
 test3
+test4
 1mil_random
 1mil_strong_bias
 1mil_weak_bias
