@@ -1,0 +1,19 @@
+1) Copelan VanWinkle Mohammed Alabdalla
+2) This compression technique would work well for shorter files, or files with a lot of repeating characters, such as dna sequencing. This compression type would work poorly on bigger files, or files that do not have many repeating characters, such as a book or story. 
+3) The strong bias will compute best, because it is 90% likely to have the same character (0)
+random: .625
+strong: 2.44
+weak: 1.174
+
+4)10.06 minutes
+
+5) 2.52 minutes. It takes a shorter amount of time because the code is comparing a lot less than it was, since it compares 10 characters at a time, and that it is very unlikely that 10 characters will exactly match, the code will run a lot faster by just moving through 10 characters at a time. 
+
+6) extra credit 1: 
+rle: 45.56 
+png: 75.34
+jpg: 29.401
+	 
+extra credit 2: rle: did not run
+png: 44.02
+jpg: 3.04111
