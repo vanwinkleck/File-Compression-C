@@ -1,0 +1,161 @@
+System calls are the fundamental API provided by an operating system to application programs. For example, the read() and write() system calls are the basic mechanisms for doing file input and output in Linux. All other file I/O routines, such as C++'s stream operators (<< and >>) or Python's file methods (file.read() and file.write()) are built upon these C-interface system calls.
+
+To make sure we never take these high-level interfaces for granted, we're going to work with Linux's system calls directly! We will use Linux's file manipulation system calls to write a program that compresses and decompresses files.
+
+In this lab, you will:
+
+    Use the open(), close(), read(), and write() system calls to do file I/O
+    Implement a simple lossless data compression method called run-length encoding.
+    Perform proper Linux/Unix style error checking on all functions that may return an error 
+
+Lab Format
+
+This assignment can be completed in groups of three, though you may work by yourself or in a group of two if you wish.
+
+Program name
+
+rle - compress or decompress a file with run-length encoding
+
+Usage
+
+rle <input file> <output file> <compression length> <mode>
+
+input file: the file to compress/decompress
+
+output file: the result of the operation
+
+compression length: the base size of candidate runs
+
+mode: specifies whether to compress or decompress- if mode=0, then compress the input file, if mode=1 then decompress the input file
+
+Description
+
+rle implements run-length encoding for the compression of files. You must use the read() and write() system calls (documented at man 2 read and man 2 write, respectively) to read the input file and write to the output file. Additionally, your program should only output runs of up to length 255, this is so the run-length specifier is guaranteed to always be one byte.
+
+Run-length encoding is a compression technique that identifies "runs" of repeated characters and represents these compactly. The length of each run is counted, and the base is stored along with the number of repetitions of that basis. For example, the string AAABBBBBB consists of nine bytes, but it could be instead represented as 3A6B, where "A" and "B" are the basis of each run and the numbers give how many times each base is repeated.
+
+The base does not need to be length-1, and this is what the third program parameter above specifies. For example, the string ABABABCDCDCDCD compresses very poorly with length-1 encoding to 1A1B1A1B1A1B1C1D1C1D1C1D1C1D, which is an expansion from 14 bytes to 28 bytes. However, if we allow our base to be length-2 then we can represent the above as 3AB4CD, which is a reduction from 14 bytes to 6 bytes.
+
+Each run should be a maximum of 255 repetitions. This is so the run-length specifier can always be represented as a single byte (recall that an 8-bit unsigned integer can store values from 0-255). For example, if you had the character "A" stored 300 times in a row, then with a length-1 encoding your program should produce "255A45A" rather than "300A".
+
+One can imagine many versions of RLE that are optimizations of the above principle. For this assignment I ask you to implement the simplest algorithm that mimics the behavior given above. In particular, given a run-length parameter K, then starting at the beginning of the input file:
+
+    Read in the next K bytes of the file, and set a counter to one
+    Scan the next K bytes of the file, if these bytes equal the first K bytes then increment the counter by one
+    Repeat the previous step until a new pattern is found
+    Output the value of the counter along with the original pattern
+    Reset the counter to one and repeat the above process for the new pattern 
+
+Decompressing files is much easier:
+
+    Read in the first byte of the file as an integer N
+    Read in the next K bytes of the file as a length-K base pattern
+    Output that pattern N times
+    Repeat the above process 
+
+rle detects the following errors and quits gracefully:
+
+    Not enough / too many command line arguments (and prints a usage statement)
+    Compression length less than 1
+    A mode value other than 0 or 1 (hint: use strtol())
+    Input file does not exist or is otherwise not openable
+    Any errors returned from open(), close(), read(), or write() - use the function perror() to print useful error messages 
+
+Upon encountering any error, print a useful message and exit() with a negative status code.
+
+If no error is encountered then the program should not produce any output to standard output, and should only modify the output file.
+
+Test Input Files
+
+    test1
+    test2
+    test3
+    test4
+    1mil_random
+    1mil_weak_bias
+    1mil_strong_bias
+    slu_logo.bmp
+
+You can download these files to your local machine with the wget program from the Linux command line. See man wget for details. Unfortunately as of this writing the SLU CS webserver does not have a correct set of certificates installed, so your command will have to use an optional parameter to ignore this. Your command will look something like:
+
+wget http://cs.slu.edu/~dferry/courses/csci3500/labs/lab1/test1 --no-check-certificate
+
+Sample Outputs
+
+You can use the xxd program to inspect your program output. Many text editors do not handle non-printable characters gracefully, but xxd prints the underlying binary data in hexadecimal. For example, the test1 test case contains the sequence AAAABBBBBBBBCCCCCCCCCCCCAAAAAAAAAAAAAAAA followed by a new-line character. The xxd program generates the following output:
+
+[dferry@hopper lab1]$xxd test1
+0000000: 4141 4141 4242 4242 4242 4242 4343 4343  AAAABBBBBBBBCCCC
+0000010: 4343 4343 4343 4343 4141 4141 4141 4141  CCCCCCCCAAAAAAAA
+0000020: 4141 4141 4141 4141 0a                   AAAAAAAA.
+
+The left column gives the location of the displayed data within the file. The middle section displays sixteen bytes of hexadecimal data (remember that one hex number describes four bits, so two hex digits describes one byte). The right section displays the printable-text equivalent of the hexadecimal data. Looking from left to right we see byte 0x41 repeated four times (ASCII code for 'A'), then 0x42 repeated eight times (for 'B'), then 0x43 repeated twelve times (for 'C') and then 0x41 repeated sixteen times (for 'A' again). The last byte in the file, 0x0a, is the New Line character: since this isn't a printable character, it is represnted with a period in the right hand side display.
+
+Thus, compressing the first file acording to the specifications above gives the following outputs:
+
+[dferry@hopper lab1]$./rle test1 compressed 1 0
+[dferry@hopper lab1]$xxd compressed
+0000000: 0441 0842 0c43 1041 010a                 .A.B.C.A..
+
+Notice we have the value 4 followed by the code for 'A', then the value 8 followed by the code for 'B', then the value 12 (hexadecimal code 0x0c) followed by the code for 'C', and the value 16 followed by the code for 'A' again. Continuing:
+
+[dferry@hopper lab1]$./rle test1 compressed 2 0
+[dferry@hopper lab1]$xxd compressed
+0000000: 0241 4104 4242 0643 4308 4141 010a       .AA.BB.CC.AA..
+
+[dferry@hopper lab1]$./rle test1 compressed 4 0
+[dferry@hopper lab1]$xxd compressed
+0000000: 0141 4141 4102 4242 4242 0343 4343 4304  .AAAA.BBBB.CCCC.
+0000010: 4141 4141 010a                           AAAA..
+
+[dferry@hopper lab1]$./rle test2 compressed 1 0
+[dferry@hopper lab1]$xxd compressed
+0000000: 0142 0341 0242 0141 0242 0143 010a 0141  .B.A.B.A.B.C...A
+0000010: 0142 0241 0142 0141 0142 0341 010a 0541  .B.A.B.A.B.A...A
+0000020: 0143 0441 010a                           .C.A..
+
+[dferry@hopper lab1]$./rle test3 compressed 1 0
+[dferry@hopper lab1]$xxd compressed
+0000000: ff41 2d41 010a                           .A-A..
+
+Hints
+
+    Make sure you master the basics of the read() and write system calls with studios 1 and 2 before attempting this lab assignment.
+    Read the manual page for open() carefully. The output file may not exist, or if it does exist you should overwrite it starting at the beginning. Thus, you should specify the O_CREAT and O_TRUNC flags, and because you specify O_CREAT you should also specify (at a minimum) the S_IRUSR and S_IWUSR file permissions.
+    Four test files are provided for you to experiment with. Each of them test a different aspect of your program- make sure your program works with all of them! If you compress and then decompress the same file you should have identical contents before and after. Feel free to make your own test files as well.
+    Look at the man pages for all the functions you use. All of them will give the possible return values as well as how errors are specified.
+    You can use the diff program to compare before/after files and it highlight any differences. This is an easy way to detect whether or not a decrypted file is identical to the original source, especially when the files are too large to inspect visually!
+    Use can use the ls -l command to see how many bytes are in each file.
+    The read() system call returns how many bytes it has read. This is useful info- you might ask the read() function to read in four bytes, but it might not be able to, such as if you're at the end of a file. This also tells you when there is no more input to be read: you can keep reading until read() returns a 0 (end of file) or -1 (error). 
+
+Documentation
+
+The following man pages may be useful:
+
+    open (2)
+    close (2)
+    read (2)
+    write (2)
+    strncmp (3)
+    memcpy (3)
+    atoi (3)
+    strtol (3)
+    perror (3)
+    errno (2)
+    exit (3)
+    xxd (1)
+    diff (1) 
+
+Questions
+
+    As the answer to the first exercise, list the name(s) of the people who worked together on this lab.
+
+    This compression technique works well in some cases, and poorly in others. Give an example of each.
+
+    The compression ratio can be computed as (size before compression)/(size after compression). For example if the original file size is 20,000 bytes and the compressed size is 15,000 bytes then the compression ratio is 1.33. There are three files above of size one million bytes each: 1mil_random, 1mil_weak_bias, and 1mil_strong_bias. Each of these files contains the numbers 0-4 in random order, but the random file contains all numbers distrbuted evenly, while the weak and strong bias files shift the distribution so that the lower number values occur more often. For example, zero occurs about 20% of the time in the random file, about 75% of the time in the weak bias file, and about 90% of the time in the strong bias file.
+
+    Which file do you think will compress best? Compute the compression ratio for each file with a compression length of one.
+
+    The Bash shell includes the nifty command time, which records how long a command runs. Record how long it takes to compress the file test4. The syntax in this case is "time ./rle test4 output 1 0". This will report three measurements: real, user, and sys. How long does your program take to run in real time?
+
+    Try the above command again but with a compression length of ten, how long does your program take now? Which operations happen more or less frequently now? Formulate a hypothesis as to the difference.
